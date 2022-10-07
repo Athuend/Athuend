@@ -1,0 +1,1646 @@
+{
+ "cells": [
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "# 机器学习练习 机器学习实践\n"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "在本节教程中将会绘制几个图形，于是我们激活matplotlib,使得在notebook中显示内联图。"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 4,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "%matplotlib inline\n",
+    "import matplotlib.pyplot as plt"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "为什么要出这个教程？"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "`scikit-learn` 提供最先进的机器学习算法。 但是，这些算法不能直接用于原始数据。 原始数据需要事先进行预处理。 因此，除了机器学习算法之外，scikit-learn还提供了一套预处理方法。此外，`scikit-learn` 提供用于流水线化这些估计器的连接器(即转换器，回归器，分类器，聚类器等)。\n",
+    "\n",
+    "在本教程中,将介绍`scikit-learn` 函数集，允许流水线估计器、评估这些流水线、使用超参数优化调整这些流水线以及创建复杂的预处理步骤。"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "# 基本用例：训练和测试分类器"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "对于第一个示例，我们将在数据集上训练和测试一个分类器。 我们将使用此示例来回忆`scikit-learn`的API。"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "我们将使用`digits`数据集，这是一个手写数字的数据集。"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 5,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "from sklearn.datasets import load_digits\n",
+    "\n",
+    "X, y = load_digits(return_X_y=True)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 4,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "(1797, 64)"
+      ]
+     },
+     "execution_count": 4,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "X.shape"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "`X`中的每行包含64个图像像素的强度。 对于`X`中的每个样本，我们得到表示所写数字对应的`y`。"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 6,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "The digit in the image is 0\n"
+     ]
+    },
+    {
+     "data": {
+      "image/png": "iVBORw0KGgoAAAANSUhEUgAAAOcAAADnCAYAAADl9EEgAAAAOXRFWHRTb2Z0d2FyZQBNYXRwbG90bGliIHZlcnNpb24zLjUuMiwgaHR0cHM6Ly9tYXRwbG90bGliLm9yZy8qNh9FAAAACXBIWXMAAAsTAAALEwEAmpwYAAADyUlEQVR4nO3dUVFjaRRG0T9TYyAWggSwkkgACSABL5FAJBALSCAS7higeZo6vZte6zF5+KiEXbeKB85u27YF9Pzzu38A4GvihChxQpQ4IUqcEPXvd2/udrsf+afc4/E4uvf6+jq2dblcxrZeXl7Gtm6329jWtG3bdl+97skJUeKEKHFClDghSpwQJU6IEidEiROixAlR4oQocUKUOCFKnBAlTogSJ0SJE6LECVHihChxQpQ4IUqcECVOiBInRIkTosQJUeKEqG/PMfxUk+cR1lrrcDiMbe33+7Gtz8/Psa3T6TS2tdZa5/N5dO8rnpwQJU6IEidEiROixAlR4oQocUKUOCFKnBAlTogSJ0SJE6LECVHihChxQpQ4IUqcECVOiBInRIkTosQJUeKEKHFClDghSpwQJU6IypxjuL+/H9uaPI+w1lp3d3djWx8fH2Nbb29vY1uTvx9rOccAfEOcECVOiBInRIkTosQJUeKEKHFClDghSpwQJU6IEidEiROixAlR4oQocUKUOCFKnBAlTogSJ0SJE6LECVHihChxQpQ4IUqcECVOiMrcStnv92Nb1+t1bGut2fslk6Y/x7+NJydEiROixAlR4oQocUKUOCFKnBAlTogSJ0SJE6LECVHihChxQpQ4IUqcECVOiBInRIkTosQJUeKEKHFClDghSpwQJU6IEidEiROi/spzDJfLZWzrJ5v8zm6329hWhScnRIkTosQJUeKEKHFClDghSpwQJU6IEidEiROixAlR4oQocUKUOCFKnBAlTogSJ0SJE6LECVHihChxQpQ4IUqcECVOiBInRIkTojLnGCb/3f79/f3Y1rTJEwmTn+P5fB7bqvDkhChxQpQ4IUqcECVOiBInRIkTosQJUeKEKHFClDghSpwQJU6IEidEiROixAlR4oQocUKUOCFKnBAlTogSJ0SJE6LECVHihChxQtRu27Zfv7nb/frN/9nhcJiaWu/v72Nba6319PQ0tnU8Hse2Jr+zh4eHsa1p27btvnrdkxOixAlR4oQocUKUOCFKnBAlTogSJ0SJE6LECVHihChxQpQ4IUqcECVOiBInRIkTosQJUeKEKHFClDghSpwQJU6IEidEiROixAlR4oSozK2USY+Pj6N7z8/PY1vX63Vs63Q6jW39ZG6lwB9GnBAlTogSJ0SJE6LECVHihChxQpQ4IUqcECVOiBInRIkTosQJUeKEKHFClDghSpwQJU6IEidEiROixAlR4oQocUKUOCFKnBD17TkG4Pfx5IQocUKUOCFKnBAlTogSJ0T9ByioUst9Wxj9AAAAAElFTkSuQmCC\n",
+      "text/plain": [
+       "<Figure size 432x288 with 1 Axes>"
+      ]
+     },
+     "metadata": {
+      "needs_background": "light"
+     },
+     "output_type": "display_data"
+    }
+   ],
+   "source": [
+    "plt.imshow(X[0].reshape(8, 8), cmap='gray');\n",
+    "\n",
+    "plt.axis('off')\n",
+    "\n",
+    "print('The digit in the image is {}'.format(y[0]))"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "在机器学习中，我们应该通过在不同的数据集上进行训练和测试来评估我们的模型。`train_test_split` 是一个用于将数据拆分为两个独立数据集的效用函数。`stratify`参数可强制将训练和测试数据集的类分布与整个数据集的类分布相同。"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 8,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "array([0, 1, 2, ..., 8, 9, 8])"
+      ]
+     },
+     "execution_count": 8,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "y"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 7,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "from sklearn.model_selection import train_test_split\n",
+    "\n",
+    "X_train, X_test, y_train, y_test = train_test_split(\n",
+    "    X, y, stratify=y, test_size=0.25, random_state=42)\n"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "一旦我们拥有独立的训练和测试集，我们就可以使用`fit`方法学习机器学习模型。 我们将使用`score`方法来测试此方法，依赖于默认的准确度指标。"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 8,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Accuracy score of the LogisticRegression is 0.9622\n"
+     ]
+    }
+   ],
+   "source": [
+    "from sklearn.linear_model import LogisticRegression  \n",
+    "\n",
+    "clf = LogisticRegression(\n",
+    "    solver='lbfgs', multi_class='ovr', max_iter=5000, random_state=42)\n",
+    "clf.fit(X_train, y_train)\n",
+    "accuracy = clf.score(X_test, y_test)\n",
+    "print('Accuracy score of the {} is {:.4f}'.format(clf.__class__.__name__,\n",
+    "                                                  accuracy))"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 8,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# ?clf.score"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "`scikit-learn`的API在分类器中是一致的。因此，我们可以通过`RandomForestClassifier`轻松替换`LogisticRegression`分类器。这些更改很小，仅与分类器实例的创建有关。"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 12,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Accuracy score of the RandomForestClassifier is 0.97\n"
+     ]
+    }
+   ],
+   "source": [
+    "from sklearn.ensemble import RandomForestClassifier\n",
+    "# RandomForestClassifier轻松替换LogisticRegression分类器\n",
+    "clf = RandomForestClassifier(n_estimators=1000, n_jobs=-1, random_state=42)\n",
+    "clf.fit(X_train, y_train)\n",
+    "accuracy = clf.score(X_test, y_test)\n",
+    "print('Accuracy score of the {} is {:.2f}'.format(clf.__class__.__name__, accuracy))"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 10,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Accuracy score of the XGBClassifier is 0.96\n"
+     ]
+    }
+   ],
+   "source": [
+    "from xgboost import XGBClassifier\n",
+    "clf = XGBClassifier(n_estimators=1000)\n",
+    "clf.fit(X_train, y_train)\n",
+    "accuracy = clf.score(X_test, y_test)\n",
+    "print('Accuracy score of the {} is {:.2f}'.format(clf.__class__.__name__, accuracy))"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 11,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Accuracy score of the GradientBoostingClassifier is 0.96\n"
+     ]
+    }
+   ],
+   "source": [
+    "from sklearn.ensemble import GradientBoostingClassifier  #GBDT算法\n",
+    "\n",
+    "clf = GradientBoostingClassifier(n_estimators=100, random_state=0)\n",
+    "clf.fit(X_train, y_train)\n",
+    "accuracy = clf.score(X_test, y_test)\n",
+    "print('Accuracy score of the {} is {:.2f}'.format(clf.__class__.__name__,\n",
+    "                                                  accuracy))"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 12,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Accuracy score of the GradientBoostingClassifier is 0.96\n"
+     ]
+    }
+   ],
+   "source": [
+    "from sklearn.metrics import balanced_accuracy_score\n",
+    "y_pred = clf.predict(X_test)\n",
+    "accuracy = balanced_accuracy_score(y_pred, y_test)\n",
+    "print('Accuracy score of the {} is {:.2f}'.format(clf.__class__.__name__,\n",
+    "                                                  accuracy))"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 15,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Accuracy score of the SVC is 0.99\n"
+     ]
+    }
+   ],
+   "source": [
+    "from sklearn.svm import SVC, LinearSVC\n",
+    "\n",
+    "clf = SVC()\n",
+    "clf.fit(X_train, y_train)\n",
+    "accuracy = clf.score(X_test, y_test)\n",
+    "print('Accuracy score of the {} is {:.2f}'.format(clf.__class__.__name__,\n",
+    "                                                  accuracy))"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 16,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Accuracy score of the LinearSVC is 0.94\n"
+     ]
+    },
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "C:\\Users\\Jean\\miniconda3\\lib\\site-packages\\sklearn\\svm\\_base.py:1208: ConvergenceWarning: Liblinear failed to converge, increase the number of iterations.\n",
+      "  ConvergenceWarning,\n"
+     ]
+    }
+   ],
+   "source": [
+    "clf = LinearSVC()\n",
+    "clf.fit(X_train, y_train)\n",
+    "accuracy = clf.score(X_test, y_test)\n",
+    "print('Accuracy score of the {} is {:.2f}'.format(clf.__class__.__name__,\n",
+    "                                                  accuracy))"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "# 标准化您的数据\n",
+    "在学习模型之前可能需要预处理。例如，一个用户可能对创建手工制作的特征或者算法感兴趣，那么他可能会对数据进行一些先验假设。\n",
+    "\n",
+    "在我们的例子中，线性模型使用的求解器期望数据被规范化。因此，我们需要在训练模型之前标准化数据。为了观察这个必要条件，我们将检查训练模型所需的迭代次数。"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "`MinMaxScaler`变换器用于归一化数据，`StandardScaler`用于标准化数据。该标量应该以下列方式应用：学习（即，`fit`方法）训练集上的统计数据并标准化（即，`transform`方法）训练集和测试集。 最后，我们将训练和测试这个模型并得到归一化后的数据集。"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 10,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "from sklearn.preprocessing import MinMaxScaler,StandardScaler\n",
+    "scaler = MinMaxScaler()\n",
+    "X_train_scaled = scaler.fit_transform(X_train)\n",
+    "X_test_scaled = scaler.transform(X_test)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 16,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Accuracy score of the LinearSVC is 0.97\n"
+     ]
+    }
+   ],
+   "source": [
+    "clf = LinearSVC()\n",
+    "clf.fit(X_train_scaled, y_train)\n",
+    "accuracy = clf.score(X_test_scaled, y_test)\n",
+    "print('Accuracy score of the {} is {:.2f}'.format(clf.__class__.__name__,\n",
+    "                                                  accuracy))"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 17,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Accuracy score of the LinearSVC is 0.95\n"
+     ]
+    },
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "C:\\Users\\hai_g\\AppData\\Roaming\\Python\\Python38\\site-packages\\sklearn\\svm\\_base.py:976: ConvergenceWarning: Liblinear failed to converge, increase the number of iterations.\n",
+      "  warnings.warn(\"Liblinear failed to converge, increase \"\n"
+     ]
+    }
+   ],
+   "source": [
+    "from sklearn.preprocessing import MinMaxScaler,StandardScaler\n",
+    "scaler = StandardScaler()\n",
+    "X_train_scaled = scaler.fit_transform(X_train)\n",
+    "X_test_scaled = scaler.transform(X_test)\n",
+    "clf = LinearSVC()\n",
+    "clf.fit(X_train_scaled, y_train)\n",
+    "accuracy = clf.score(X_test_scaled, y_test)\n",
+    "print('Accuracy score of the {} is {:.2f}'.format(clf.__class__.__name__,\n",
+    "                                                  accuracy))"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 18,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "from sklearn.metrics import confusion_matrix, classification_report"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 19,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "y_pred = clf.predict(X_test_scaled)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 20,
+   "metadata": {
+    "scrolled": true
+   },
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "[[45  0  0  0  0  0  0  0  0  0]\n",
+      " [ 0 41  0  0  0  0  1  0  2  0]\n",
+      " [ 0  0 44  0  0  0  0  0  0  0]\n",
+      " [ 0  1  0 44  0  0  0  0  0  0]\n",
+      " [ 0  1  0  0 45  0  0  1  0  1]\n",
+      " [ 0  0  0  1  0 44  0  0  1  1]\n",
+      " [ 0  1  0  0  0  0 43  0  2  0]\n",
+      " [ 0  0  0  1  0  0  0 44  0  2]\n",
+      " [ 0  2  0  0  0  0  1  0 38  1]\n",
+      " [ 0  0  0  0  0  2  0  0  0 40]]\n"
+     ]
+    }
+   ],
+   "source": [
+    "print(confusion_matrix(y_pred, y_test))"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 21,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "import pandas as pd"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 22,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/html": [
+       "<div>\n",
+       "<style scoped>\n",
+       "    .dataframe tbody tr th:only-of-type {\n",
+       "        vertical-align: middle;\n",
+       "    }\n",
+       "\n",
+       "    .dataframe tbody tr th {\n",
+       "        vertical-align: top;\n",
+       "    }\n",
+       "\n",
+       "    .dataframe thead th {\n",
+       "        text-align: right;\n",
+       "    }\n",
+       "</style>\n",
+       "<table border=\"1\" class=\"dataframe\">\n",
+       "  <thead>\n",
+       "    <tr style=\"text-align: right;\">\n",
+       "      <th></th>\n",
+       "      <th>0</th>\n",
+       "      <th>1</th>\n",
+       "      <th>2</th>\n",
+       "      <th>3</th>\n",
+       "      <th>4</th>\n",
+       "      <th>5</th>\n",
+       "      <th>6</th>\n",
+       "      <th>7</th>\n",
+       "      <th>8</th>\n",
+       "      <th>9</th>\n",
+       "    </tr>\n",
+       "  </thead>\n",
+       "  <tbody>\n",
+       "    <tr>\n",
+       "      <th>0</th>\n",
+       "      <td>45</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>1</th>\n",
+       "      <td>0</td>\n",
+       "      <td>41</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>1</td>\n",
+       "      <td>0</td>\n",
+       "      <td>2</td>\n",
+       "      <td>0</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>2</th>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>44</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>3</th>\n",
+       "      <td>0</td>\n",
+       "      <td>1</td>\n",
+       "      <td>0</td>\n",
+       "      <td>44</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>4</th>\n",
+       "      <td>0</td>\n",
+       "      <td>1</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>45</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>1</td>\n",
+       "      <td>0</td>\n",
+       "      <td>1</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>5</th>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>1</td>\n",
+       "      <td>0</td>\n",
+       "      <td>44</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>1</td>\n",
+       "      <td>1</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>6</th>\n",
+       "      <td>0</td>\n",
+       "      <td>1</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>43</td>\n",
+       "      <td>0</td>\n",
+       "      <td>2</td>\n",
+       "      <td>0</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>7</th>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>1</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>44</td>\n",
+       "      <td>0</td>\n",
+       "      <td>2</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>8</th>\n",
+       "      <td>0</td>\n",
+       "      <td>2</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>1</td>\n",
+       "      <td>0</td>\n",
+       "      <td>38</td>\n",
+       "      <td>1</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>9</th>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>2</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>40</td>\n",
+       "    </tr>\n",
+       "  </tbody>\n",
+       "</table>\n",
+       "</div>"
+      ],
+      "text/plain": [
+       "    0   1   2   3   4   5   6   7   8   9\n",
+       "0  45   0   0   0   0   0   0   0   0   0\n",
+       "1   0  41   0   0   0   0   1   0   2   0\n",
+       "2   0   0  44   0   0   0   0   0   0   0\n",
+       "3   0   1   0  44   0   0   0   0   0   0\n",
+       "4   0   1   0   0  45   0   0   1   0   1\n",
+       "5   0   0   0   1   0  44   0   0   1   1\n",
+       "6   0   1   0   0   0   0  43   0   2   0\n",
+       "7   0   0   0   1   0   0   0  44   0   2\n",
+       "8   0   2   0   0   0   0   1   0  38   1\n",
+       "9   0   0   0   0   0   2   0   0   0  40"
+      ]
+     },
+     "execution_count": 22,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "pd.DataFrame(\n",
+    "    (confusion_matrix(y_pred, y_test)),\n",
+    "    columns=range(10),\n",
+    "    index=range(10))"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 23,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "              precision    recall  f1-score   support\n",
+      "\n",
+      "           0       1.00      1.00      1.00        45\n",
+      "           1       0.89      0.93      0.91        44\n",
+      "           2       1.00      1.00      1.00        44\n",
+      "           3       0.96      0.98      0.97        45\n",
+      "           4       1.00      0.94      0.97        48\n",
+      "           5       0.96      0.94      0.95        47\n",
+      "           6       0.96      0.93      0.95        46\n",
+      "           7       0.98      0.94      0.96        47\n",
+      "           8       0.88      0.90      0.89        42\n",
+      "           9       0.89      0.95      0.92        42\n",
+      "\n",
+      "    accuracy                           0.95       450\n",
+      "   macro avg       0.95      0.95      0.95       450\n",
+      "weighted avg       0.95      0.95      0.95       450\n",
+      "\n"
+     ]
+    }
+   ],
+   "source": [
+    "print(classification_report(y_pred, y_test)) "
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "# 交叉验证\n",
+    "\n",
+    "分割数据对于评估统计模型性能是必要的。 但是，它减少了可用于学习模型的样本数量。 因此，应尽可能使用交叉验证。有多个拆分也会提供有关模型稳定性的信息。\n",
+    "\n",
+    "`scikit-learn`提供了三个函数：`cross_val_score`，`cross_val_predict`和`cross_validate`。 后者提供了有关拟合时间，训练和测试分数的更多信息。 我也可以一次返回多个分数。"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 13,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "from sklearn.model_selection import cross_validate\n",
+    "\n",
+    "clf = LogisticRegression(\n",
+    "    solver='lbfgs', multi_class='auto', max_iter=1000, random_state=42)\n",
+    "scores = cross_validate(\n",
+    "    clf, X_train_scaled, y_train, cv=3, return_train_score=True)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 25,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "{'C': 1.0,\n",
+       " 'class_weight': None,\n",
+       " 'dual': False,\n",
+       " 'fit_intercept': True,\n",
+       " 'intercept_scaling': 1,\n",
+       " 'l1_ratio': None,\n",
+       " 'max_iter': 1000,\n",
+       " 'multi_class': 'auto',\n",
+       " 'n_jobs': None,\n",
+       " 'penalty': 'l2',\n",
+       " 'random_state': 42,\n",
+       " 'solver': 'lbfgs',\n",
+       " 'tol': 0.0001,\n",
+       " 'verbose': 0,\n",
+       " 'warm_start': False}"
+      ]
+     },
+     "execution_count": 25,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "clf.get_params()"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 14,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/html": [
+       "<div>\n",
+       "<style scoped>\n",
+       "    .dataframe tbody tr th:only-of-type {\n",
+       "        vertical-align: middle;\n",
+       "    }\n",
+       "\n",
+       "    .dataframe tbody tr th {\n",
+       "        vertical-align: top;\n",
+       "    }\n",
+       "\n",
+       "    .dataframe thead th {\n",
+       "        text-align: right;\n",
+       "    }\n",
+       "</style>\n",
+       "<table border=\"1\" class=\"dataframe\">\n",
+       "  <thead>\n",
+       "    <tr style=\"text-align: right;\">\n",
+       "      <th></th>\n",
+       "      <th>fit_time</th>\n",
+       "      <th>score_time</th>\n",
+       "      <th>test_score</th>\n",
+       "      <th>train_score</th>\n",
+       "    </tr>\n",
+       "  </thead>\n",
+       "  <tbody>\n",
+       "    <tr>\n",
+       "      <th>0</th>\n",
+       "      <td>0.272876</td>\n",
+       "      <td>0.000000</td>\n",
+       "      <td>0.979955</td>\n",
+       "      <td>0.984410</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>1</th>\n",
+       "      <td>0.258049</td>\n",
+       "      <td>0.000998</td>\n",
+       "      <td>0.955457</td>\n",
+       "      <td>0.988864</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>2</th>\n",
+       "      <td>0.286237</td>\n",
+       "      <td>0.001992</td>\n",
+       "      <td>0.957684</td>\n",
+       "      <td>0.986637</td>\n",
+       "    </tr>\n",
+       "  </tbody>\n",
+       "</table>\n",
+       "</div>"
+      ],
+      "text/plain": [
+       "   fit_time  score_time  test_score  train_score\n",
+       "0  0.272876    0.000000    0.979955     0.984410\n",
+       "1  0.258049    0.000998    0.955457     0.988864\n",
+       "2  0.286237    0.001992    0.957684     0.986637"
+      ]
+     },
+     "execution_count": 14,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "import pandas as pd\n",
+    "\n",
+    "df_scores = pd.DataFrame(scores)\n",
+    "df_scores ##scores返回值含义查阅sklearn中文网"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "# 网格搜索调参\n",
+    "可以通过穷举搜索来优化超参数。`GridSearchCV`提供此类实用程序，并通过参数网格进行交叉验证的网格搜索。\n",
+    "\n",
+    "如下例子，我们希望优化`LogisticRegression`分类器的`C`和`penalty`参数。\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 27,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "GridSearchCV(cv=3,\n",
+       "             estimator=LogisticRegression(max_iter=5000, random_state=42,\n",
+       "                                          solver='saga'),\n",
+       "             n_jobs=-1,\n",
+       "             param_grid=[{'C': [0.01, 0.1, 1, 10], 'penalty': ['l2', 'l1']}],\n",
+       "             return_train_score=True)"
+      ]
+     },
+     "execution_count": 27,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "from sklearn.model_selection import GridSearchCV\n",
+    "\n",
+    "clf = LogisticRegression(\n",
+    "    solver='saga', multi_class='auto', random_state=42, max_iter=5000)\n",
+    "param_grid = {\n",
+    "    'logisticregression__C': [0.01, 0.1, 1],\n",
+    "    'logisticregression__penalty': ['l2', 'l1']\n",
+    "}\n",
+    "tuned_parameters = [{\n",
+    "    'C': [0.01, 0.1, 1, 10],\n",
+    "    'penalty': ['l2', 'l1'],\n",
+    "}]##参数一共八种组合\n",
+    "grid = GridSearchCV(\n",
+    "    clf, tuned_parameters, cv=3, n_jobs=-1, return_train_score=True)\n",
+    "grid.fit(X_train_scaled, y_train)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "我们可以使用`get_params()`检查管道的所有参数。"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 28,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "{'cv': 3,\n",
+       " 'error_score': nan,\n",
+       " 'estimator__C': 1.0,\n",
+       " 'estimator__class_weight': None,\n",
+       " 'estimator__dual': False,\n",
+       " 'estimator__fit_intercept': True,\n",
+       " 'estimator__intercept_scaling': 1,\n",
+       " 'estimator__l1_ratio': None,\n",
+       " 'estimator__max_iter': 5000,\n",
+       " 'estimator__multi_class': 'auto',\n",
+       " 'estimator__n_jobs': None,\n",
+       " 'estimator__penalty': 'l2',\n",
+       " 'estimator__random_state': 42,\n",
+       " 'estimator__solver': 'saga',\n",
+       " 'estimator__tol': 0.0001,\n",
+       " 'estimator__verbose': 0,\n",
+       " 'estimator__warm_start': False,\n",
+       " 'estimator': LogisticRegression(max_iter=5000, random_state=42, solver='saga'),\n",
+       " 'iid': 'deprecated',\n",
+       " 'n_jobs': -1,\n",
+       " 'param_grid': [{'C': [0.01, 0.1, 1, 10], 'penalty': ['l2', 'l1']}],\n",
+       " 'pre_dispatch': '2*n_jobs',\n",
+       " 'refit': True,\n",
+       " 'return_train_score': True,\n",
+       " 'scoring': None,\n",
+       " 'verbose': 0}"
+      ]
+     },
+     "execution_count": 28,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "grid.get_params()"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 29,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/html": [
+       "<div>\n",
+       "<style scoped>\n",
+       "    .dataframe tbody tr th:only-of-type {\n",
+       "        vertical-align: middle;\n",
+       "    }\n",
+       "\n",
+       "    .dataframe tbody tr th {\n",
+       "        vertical-align: top;\n",
+       "    }\n",
+       "\n",
+       "    .dataframe thead th {\n",
+       "        text-align: right;\n",
+       "    }\n",
+       "</style>\n",
+       "<table border=\"1\" class=\"dataframe\">\n",
+       "  <thead>\n",
+       "    <tr style=\"text-align: right;\">\n",
+       "      <th></th>\n",
+       "      <th>mean_fit_time</th>\n",
+       "      <th>std_fit_time</th>\n",
+       "      <th>mean_score_time</th>\n",
+       "      <th>std_score_time</th>\n",
+       "      <th>param_C</th>\n",
+       "      <th>param_penalty</th>\n",
+       "      <th>params</th>\n",
+       "      <th>split0_test_score</th>\n",
+       "      <th>split1_test_score</th>\n",
+       "      <th>split2_test_score</th>\n",
+       "      <th>mean_test_score</th>\n",
+       "      <th>std_test_score</th>\n",
+       "      <th>rank_test_score</th>\n",
+       "      <th>split0_train_score</th>\n",
+       "      <th>split1_train_score</th>\n",
+       "      <th>split2_train_score</th>\n",
+       "      <th>mean_train_score</th>\n",
+       "      <th>std_train_score</th>\n",
+       "    </tr>\n",
+       "  </thead>\n",
+       "  <tbody>\n",
+       "    <tr>\n",
+       "      <th>0</th>\n",
+       "      <td>1.529907</td>\n",
+       "      <td>0.129093</td>\n",
+       "      <td>0.001660</td>\n",
+       "      <td>4.689003e-04</td>\n",
+       "      <td>0.01</td>\n",
+       "      <td>l2</td>\n",
+       "      <td>{'C': 0.01, 'penalty': 'l2'}</td>\n",
+       "      <td>0.953229</td>\n",
+       "      <td>0.930958</td>\n",
+       "      <td>0.935412</td>\n",
+       "      <td>0.939866</td>\n",
+       "      <td>0.009622</td>\n",
+       "      <td>7</td>\n",
+       "      <td>0.954343</td>\n",
+       "      <td>0.953229</td>\n",
+       "      <td>0.952116</td>\n",
+       "      <td>0.953229</td>\n",
+       "      <td>0.000909</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>1</th>\n",
+       "      <td>2.618658</td>\n",
+       "      <td>0.459522</td>\n",
+       "      <td>0.003658</td>\n",
+       "      <td>3.760061e-03</td>\n",
+       "      <td>0.01</td>\n",
+       "      <td>l1</td>\n",
+       "      <td>{'C': 0.01, 'penalty': 'l1'}</td>\n",
+       "      <td>0.543430</td>\n",
+       "      <td>0.563474</td>\n",
+       "      <td>0.514477</td>\n",
+       "      <td>0.540460</td>\n",
+       "      <td>0.020113</td>\n",
+       "      <td>8</td>\n",
+       "      <td>0.550111</td>\n",
+       "      <td>0.536748</td>\n",
+       "      <td>0.532294</td>\n",
+       "      <td>0.539718</td>\n",
+       "      <td>0.007571</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>2</th>\n",
+       "      <td>5.150287</td>\n",
+       "      <td>0.541557</td>\n",
+       "      <td>0.001330</td>\n",
+       "      <td>4.708646e-04</td>\n",
+       "      <td>0.1</td>\n",
+       "      <td>l2</td>\n",
+       "      <td>{'C': 0.1, 'penalty': 'l2'}</td>\n",
+       "      <td>0.977728</td>\n",
+       "      <td>0.953229</td>\n",
+       "      <td>0.962138</td>\n",
+       "      <td>0.964365</td>\n",
+       "      <td>0.010125</td>\n",
+       "      <td>4</td>\n",
+       "      <td>0.986637</td>\n",
+       "      <td>0.989978</td>\n",
+       "      <td>0.987751</td>\n",
+       "      <td>0.988122</td>\n",
+       "      <td>0.001389</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>3</th>\n",
+       "      <td>17.531988</td>\n",
+       "      <td>2.149481</td>\n",
+       "      <td>0.000997</td>\n",
+       "      <td>4.899036e-07</td>\n",
+       "      <td>0.1</td>\n",
+       "      <td>l1</td>\n",
+       "      <td>{'C': 0.1, 'penalty': 'l1'}</td>\n",
+       "      <td>0.953229</td>\n",
+       "      <td>0.935412</td>\n",
+       "      <td>0.942094</td>\n",
+       "      <td>0.943578</td>\n",
+       "      <td>0.007349</td>\n",
+       "      <td>6</td>\n",
+       "      <td>0.951002</td>\n",
+       "      <td>0.961024</td>\n",
+       "      <td>0.957684</td>\n",
+       "      <td>0.956570</td>\n",
+       "      <td>0.004167</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>4</th>\n",
+       "      <td>10.127374</td>\n",
+       "      <td>0.915114</td>\n",
+       "      <td>0.001995</td>\n",
+       "      <td>1.411301e-03</td>\n",
+       "      <td>1</td>\n",
+       "      <td>l2</td>\n",
+       "      <td>{'C': 1, 'penalty': 'l2'}</td>\n",
+       "      <td>0.977728</td>\n",
+       "      <td>0.957684</td>\n",
+       "      <td>0.962138</td>\n",
+       "      <td>0.965850</td>\n",
+       "      <td>0.008594</td>\n",
+       "      <td>1</td>\n",
+       "      <td>1.000000</td>\n",
+       "      <td>1.000000</td>\n",
+       "      <td>1.000000</td>\n",
+       "      <td>1.000000</td>\n",
+       "      <td>0.000000</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>5</th>\n",
+       "      <td>44.644031</td>\n",
+       "      <td>1.136323</td>\n",
+       "      <td>0.001662</td>\n",
+       "      <td>9.392566e-04</td>\n",
+       "      <td>1</td>\n",
+       "      <td>l1</td>\n",
+       "      <td>{'C': 1, 'penalty': 'l1'}</td>\n",
+       "      <td>0.977728</td>\n",
+       "      <td>0.959911</td>\n",
+       "      <td>0.953229</td>\n",
+       "      <td>0.963623</td>\n",
+       "      <td>0.010340</td>\n",
+       "      <td>5</td>\n",
+       "      <td>0.998886</td>\n",
+       "      <td>0.998886</td>\n",
+       "      <td>1.000000</td>\n",
+       "      <td>0.999258</td>\n",
+       "      <td>0.000525</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>6</th>\n",
+       "      <td>19.567238</td>\n",
+       "      <td>1.325637</td>\n",
+       "      <td>0.000997</td>\n",
+       "      <td>4.052337e-07</td>\n",
+       "      <td>10</td>\n",
+       "      <td>l2</td>\n",
+       "      <td>{'C': 10, 'penalty': 'l2'}</td>\n",
+       "      <td>0.975501</td>\n",
+       "      <td>0.966592</td>\n",
+       "      <td>0.955457</td>\n",
+       "      <td>0.965850</td>\n",
+       "      <td>0.008200</td>\n",
+       "      <td>1</td>\n",
+       "      <td>1.000000</td>\n",
+       "      <td>1.000000</td>\n",
+       "      <td>1.000000</td>\n",
+       "      <td>1.000000</td>\n",
+       "      <td>0.000000</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>7</th>\n",
+       "      <td>39.498097</td>\n",
+       "      <td>3.290940</td>\n",
+       "      <td>0.000665</td>\n",
+       "      <td>4.700779e-04</td>\n",
+       "      <td>10</td>\n",
+       "      <td>l1</td>\n",
+       "      <td>{'C': 10, 'penalty': 'l1'}</td>\n",
+       "      <td>0.979955</td>\n",
+       "      <td>0.966592</td>\n",
+       "      <td>0.951002</td>\n",
+       "      <td>0.965850</td>\n",
+       "      <td>0.011832</td>\n",
+       "      <td>1</td>\n",
+       "      <td>1.000000</td>\n",
+       "      <td>1.000000</td>\n",
+       "      <td>1.000000</td>\n",
+       "      <td>1.000000</td>\n",
+       "      <td>0.000000</td>\n",
+       "    </tr>\n",
+       "  </tbody>\n",
+       "</table>\n",
+       "</div>"
+      ],
+      "text/plain": [
+       "   mean_fit_time  std_fit_time  mean_score_time  std_score_time param_C  \\\n",
+       "0       1.529907      0.129093         0.001660    4.689003e-04    0.01   \n",
+       "1       2.618658      0.459522         0.003658    3.760061e-03    0.01   \n",
+       "2       5.150287      0.541557         0.001330    4.708646e-04     0.1   \n",
+       "3      17.531988      2.149481         0.000997    4.899036e-07     0.1   \n",
+       "4      10.127374      0.915114         0.001995    1.411301e-03       1   \n",
+       "5      44.644031      1.136323         0.001662    9.392566e-04       1   \n",
+       "6      19.567238      1.325637         0.000997    4.052337e-07      10   \n",
+       "7      39.498097      3.290940         0.000665    4.700779e-04      10   \n",
+       "\n",
+       "  param_penalty                        params  split0_test_score  \\\n",
+       "0            l2  {'C': 0.01, 'penalty': 'l2'}           0.953229   \n",
+       "1            l1  {'C': 0.01, 'penalty': 'l1'}           0.543430   \n",
+       "2            l2   {'C': 0.1, 'penalty': 'l2'}           0.977728   \n",
+       "3            l1   {'C': 0.1, 'penalty': 'l1'}           0.953229   \n",
+       "4            l2     {'C': 1, 'penalty': 'l2'}           0.977728   \n",
+       "5            l1     {'C': 1, 'penalty': 'l1'}           0.977728   \n",
+       "6            l2    {'C': 10, 'penalty': 'l2'}           0.975501   \n",
+       "7            l1    {'C': 10, 'penalty': 'l1'}           0.979955   \n",
+       "\n",
+       "   split1_test_score  split2_test_score  mean_test_score  std_test_score  \\\n",
+       "0           0.930958           0.935412         0.939866        0.009622   \n",
+       "1           0.563474           0.514477         0.540460        0.020113   \n",
+       "2           0.953229           0.962138         0.964365        0.010125   \n",
+       "3           0.935412           0.942094         0.943578        0.007349   \n",
+       "4           0.957684           0.962138         0.965850        0.008594   \n",
+       "5           0.959911           0.953229         0.963623        0.010340   \n",
+       "6           0.966592           0.955457         0.965850        0.008200   \n",
+       "7           0.966592           0.951002         0.965850        0.011832   \n",
+       "\n",
+       "   rank_test_score  split0_train_score  split1_train_score  \\\n",
+       "0                7            0.954343            0.953229   \n",
+       "1                8            0.550111            0.536748   \n",
+       "2                4            0.986637            0.989978   \n",
+       "3                6            0.951002            0.961024   \n",
+       "4                1            1.000000            1.000000   \n",
+       "5                5            0.998886            0.998886   \n",
+       "6                1            1.000000            1.000000   \n",
+       "7                1            1.000000            1.000000   \n",
+       "\n",
+       "   split2_train_score  mean_train_score  std_train_score  \n",
+       "0            0.952116          0.953229         0.000909  \n",
+       "1            0.532294          0.539718         0.007571  \n",
+       "2            0.987751          0.988122         0.001389  \n",
+       "3            0.957684          0.956570         0.004167  \n",
+       "4            1.000000          1.000000         0.000000  \n",
+       "5            1.000000          0.999258         0.000525  \n",
+       "6            1.000000          1.000000         0.000000  \n",
+       "7            1.000000          1.000000         0.000000  "
+      ]
+     },
+     "execution_count": 29,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "df_grid = pd.DataFrame(grid.cv_results_)\n",
+    "df_grid"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "此外，可以将网格搜索称为任何其他分类器以进行预测。"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "# 练习 异构数据：当您使用数字以外的数据时"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 44,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/html": [
+       "<div>\n",
+       "<style scoped>\n",
+       "    .dataframe tbody tr th:only-of-type {\n",
+       "        vertical-align: middle;\n",
+       "    }\n",
+       "\n",
+       "    .dataframe tbody tr th {\n",
+       "        vertical-align: top;\n",
+       "    }\n",
+       "\n",
+       "    .dataframe thead th {\n",
+       "        text-align: right;\n",
+       "    }\n",
+       "</style>\n",
+       "<table border=\"1\" class=\"dataframe\">\n",
+       "  <thead>\n",
+       "    <tr style=\"text-align: right;\">\n",
+       "      <th></th>\n",
+       "      <th>pclass</th>\n",
+       "      <th>survived</th>\n",
+       "      <th>name</th>\n",
+       "      <th>sex</th>\n",
+       "      <th>age</th>\n",
+       "      <th>sibsp</th>\n",
+       "      <th>parch</th>\n",
+       "      <th>ticket</th>\n",
+       "      <th>fare</th>\n",
+       "      <th>cabin</th>\n",
+       "      <th>embarked</th>\n",
+       "      <th>boat</th>\n",
+       "      <th>body</th>\n",
+       "      <th>home.dest</th>\n",
+       "    </tr>\n",
+       "  </thead>\n",
+       "  <tbody>\n",
+       "    <tr>\n",
+       "      <th>0</th>\n",
+       "      <td>1</td>\n",
+       "      <td>1</td>\n",
+       "      <td>Allen, Miss. Elisabeth Walton</td>\n",
+       "      <td>female</td>\n",
+       "      <td>29.0000</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>24160</td>\n",
+       "      <td>211.3375</td>\n",
+       "      <td>B5</td>\n",
+       "      <td>S</td>\n",
+       "      <td>2</td>\n",
+       "      <td>NaN</td>\n",
+       "      <td>St Louis, MO</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>1</th>\n",
+       "      <td>1</td>\n",
+       "      <td>1</td>\n",
+       "      <td>Allison, Master. Hudson Trevor</td>\n",
+       "      <td>male</td>\n",
+       "      <td>0.9167</td>\n",
+       "      <td>1</td>\n",
+       "      <td>2</td>\n",
+       "      <td>113781</td>\n",
+       "      <td>151.5500</td>\n",
+       "      <td>C22 C26</td>\n",
+       "      <td>S</td>\n",
+       "      <td>11</td>\n",
+       "      <td>NaN</td>\n",
+       "      <td>Montreal, PQ / Chesterville, ON</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>2</th>\n",
+       "      <td>1</td>\n",
+       "      <td>0</td>\n",
+       "      <td>Allison, Miss. Helen Loraine</td>\n",
+       "      <td>female</td>\n",
+       "      <td>2.0000</td>\n",
+       "      <td>1</td>\n",
+       "      <td>2</td>\n",
+       "      <td>113781</td>\n",
+       "      <td>151.5500</td>\n",
+       "      <td>C22 C26</td>\n",
+       "      <td>S</td>\n",
+       "      <td>NaN</td>\n",
+       "      <td>NaN</td>\n",
+       "      <td>Montreal, PQ / Chesterville, ON</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>3</th>\n",
+       "      <td>1</td>\n",
+       "      <td>0</td>\n",
+       "      <td>Allison, Mr. Hudson Joshua Creighton</td>\n",
+       "      <td>male</td>\n",
+       "      <td>30.0000</td>\n",
+       "      <td>1</td>\n",
+       "      <td>2</td>\n",
+       "      <td>113781</td>\n",
+       "      <td>151.5500</td>\n",
+       "      <td>C22 C26</td>\n",
+       "      <td>S</td>\n",
+       "      <td>NaN</td>\n",
+       "      <td>135.0</td>\n",
+       "      <td>Montreal, PQ / Chesterville, ON</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>4</th>\n",
+       "      <td>1</td>\n",
+       "      <td>0</td>\n",
+       "      <td>Allison, Mrs. Hudson J C (Bessie Waldo Daniels)</td>\n",
+       "      <td>female</td>\n",
+       "      <td>25.0000</td>\n",
+       "      <td>1</td>\n",
+       "      <td>2</td>\n",
+       "      <td>113781</td>\n",
+       "      <td>151.5500</td>\n",
+       "      <td>C22 C26</td>\n",
+       "      <td>S</td>\n",
+       "      <td>NaN</td>\n",
+       "      <td>NaN</td>\n",
+       "      <td>Montreal, PQ / Chesterville, ON</td>\n",
+       "    </tr>\n",
+       "  </tbody>\n",
+       "</table>\n",
+       "</div>"
+      ],
+      "text/plain": [
+       "   pclass  survived                                             name     sex  \\\n",
+       "0       1         1                    Allen, Miss. Elisabeth Walton  female   \n",
+       "1       1         1                   Allison, Master. Hudson Trevor    male   \n",
+       "2       1         0                     Allison, Miss. Helen Loraine  female   \n",
+       "3       1         0             Allison, Mr. Hudson Joshua Creighton    male   \n",
+       "4       1         0  Allison, Mrs. Hudson J C (Bessie Waldo Daniels)  female   \n",
+       "\n",
+       "       age  sibsp  parch  ticket      fare    cabin embarked boat   body  \\\n",
+       "0  29.0000      0      0   24160  211.3375       B5        S    2    NaN   \n",
+       "1   0.9167      1      2  113781  151.5500  C22 C26        S   11    NaN   \n",
+       "2   2.0000      1      2  113781  151.5500  C22 C26        S  NaN    NaN   \n",
+       "3  30.0000      1      2  113781  151.5500  C22 C26        S  NaN  135.0   \n",
+       "4  25.0000      1      2  113781  151.5500  C22 C26        S  NaN    NaN   \n",
+       "\n",
+       "                         home.dest  \n",
+       "0                     St Louis, MO  \n",
+       "1  Montreal, PQ / Chesterville, ON  \n",
+       "2  Montreal, PQ / Chesterville, ON  \n",
+       "3  Montreal, PQ / Chesterville, ON  \n",
+       "4  Montreal, PQ / Chesterville, ON  "
+      ]
+     },
+     "execution_count": 44,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "import os\n",
+    "data = pd.read_csv('data/titanic_openml.csv', na_values='?')\n",
+    "data.head()"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "泰坦尼克号数据集包含分类，文本和数字特征。 我们将使用此数据集来预测乘客是否在泰坦尼克号中幸存下来。\n",
+    "\n",
+    "让我们将数据拆分为训练和测试集，并将幸存列用作目标。"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 34,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "y = data['survived']\n",
+    "X = data.drop(columns='survived')"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 35,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "X_train, X_test, y_train, y_test = train_test_split(X, y, random_state=42)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "首先，可以尝试使用`LogisticRegression`分类器，看看它的表现有多好。"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 36,
+   "metadata": {},
+   "outputs": [
+    {
+     "ename": "ValueError",
+     "evalue": "could not convert string to float: 'S'",
+     "output_type": "error",
+     "traceback": [
+      "\u001b[1;31m---------------------------------------------------------------------------\u001b[0m",
+      "\u001b[1;31mValueError\u001b[0m                                Traceback (most recent call last)",
+      "\u001b[1;32m<ipython-input-36-45c060082178>\u001b[0m in \u001b[0;36m<module>\u001b[1;34m\u001b[0m\n\u001b[0;32m      1\u001b[0m \u001b[0mclf\u001b[0m \u001b[1;33m=\u001b[0m \u001b[0mLogisticRegression\u001b[0m\u001b[1;33m(\u001b[0m\u001b[1;33m)\u001b[0m\u001b[1;33m\u001b[0m\u001b[1;33m\u001b[0m\u001b[0m\n\u001b[1;32m----> 2\u001b[1;33m \u001b[0mclf\u001b[0m\u001b[1;33m.\u001b[0m\u001b[0mfit\u001b[0m\u001b[1;33m(\u001b[0m\u001b[0mX_train\u001b[0m\u001b[1;33m,\u001b[0m \u001b[0my_train\u001b[0m\u001b[1;33m)\u001b[0m\u001b[1;31m#这里肯定会报错。\u001b[0m\u001b[1;33m\u001b[0m\u001b[1;33m\u001b[0m\u001b[0m\n\u001b[0m",
+      "\u001b[1;32m~\\AppData\\Roaming\\Python\\Python38\\site-packages\\sklearn\\linear_model\\_logistic.py\u001b[0m in \u001b[0;36mfit\u001b[1;34m(self, X, y, sample_weight)\u001b[0m\n\u001b[0;32m   1340\u001b[0m             \u001b[0m_dtype\u001b[0m \u001b[1;33m=\u001b[0m \u001b[1;33m[\u001b[0m\u001b[0mnp\u001b[0m\u001b[1;33m.\u001b[0m\u001b[0mfloat64\u001b[0m\u001b[1;33m,\u001b[0m \u001b[0mnp\u001b[0m\u001b[1;33m.\u001b[0m\u001b[0mfloat32\u001b[0m\u001b[1;33m]\u001b[0m\u001b[1;33m\u001b[0m\u001b[1;33m\u001b[0m\u001b[0m\n\u001b[0;32m   1341\u001b[0m \u001b[1;33m\u001b[0m\u001b[0m\n\u001b[1;32m-> 1342\u001b[1;33m         X, y = self._validate_data(X, y, accept_sparse='csr', dtype=_dtype,\n\u001b[0m\u001b[0;32m   1343\u001b[0m                                    \u001b[0morder\u001b[0m\u001b[1;33m=\u001b[0m\u001b[1;34m\"C\"\u001b[0m\u001b[1;33m,\u001b[0m\u001b[1;33m\u001b[0m\u001b[1;33m\u001b[0m\u001b[0m\n\u001b[0;32m   1344\u001b[0m                                    accept_large_sparse=solver != 'liblinear')\n",
+      "\u001b[1;32m~\\AppData\\Roaming\\Python\\Python38\\site-packages\\sklearn\\base.py\u001b[0m in \u001b[0;36m_validate_data\u001b[1;34m(self, X, y, reset, validate_separately, **check_params)\u001b[0m\n\u001b[0;32m    430\u001b[0m                 \u001b[0my\u001b[0m \u001b[1;33m=\u001b[0m \u001b[0mcheck_array\u001b[0m\u001b[1;33m(\u001b[0m\u001b[0my\u001b[0m\u001b[1;33m,\u001b[0m \u001b[1;33m**\u001b[0m\u001b[0mcheck_y_params\u001b[0m\u001b[1;33m)\u001b[0m\u001b[1;33m\u001b[0m\u001b[1;33m\u001b[0m\u001b[0m\n\u001b[0;32m    431\u001b[0m             \u001b[1;32melse\u001b[0m\u001b[1;33m:\u001b[0m\u001b[1;33m\u001b[0m\u001b[1;33m\u001b[0m\u001b[0m\n\u001b[1;32m--> 432\u001b[1;33m                 \u001b[0mX\u001b[0m\u001b[1;33m,\u001b[0m \u001b[0my\u001b[0m \u001b[1;33m=\u001b[0m \u001b[0mcheck_X_y\u001b[0m\u001b[1;33m(\u001b[0m\u001b[0mX\u001b[0m\u001b[1;33m,\u001b[0m \u001b[0my\u001b[0m\u001b[1;33m,\u001b[0m \u001b[1;33m**\u001b[0m\u001b[0mcheck_params\u001b[0m\u001b[1;33m)\u001b[0m\u001b[1;33m\u001b[0m\u001b[1;33m\u001b[0m\u001b[0m\n\u001b[0m\u001b[0;32m    433\u001b[0m             \u001b[0mout\u001b[0m \u001b[1;33m=\u001b[0m \u001b[0mX\u001b[0m\u001b[1;33m,\u001b[0m \u001b[0my\u001b[0m\u001b[1;33m\u001b[0m\u001b[1;33m\u001b[0m\u001b[0m\n\u001b[0;32m    434\u001b[0m \u001b[1;33m\u001b[0m\u001b[0m\n",
+      "\u001b[1;32m~\\AppData\\Roaming\\Python\\Python38\\site-packages\\sklearn\\utils\\validation.py\u001b[0m in \u001b[0;36minner_f\u001b[1;34m(*args, **kwargs)\u001b[0m\n\u001b[0;32m     71\u001b[0m                           FutureWarning)\n\u001b[0;32m     72\u001b[0m         \u001b[0mkwargs\u001b[0m\u001b[1;33m.\u001b[0m\u001b[0mupdate\u001b[0m\u001b[1;33m(\u001b[0m\u001b[1;33m{\u001b[0m\u001b[0mk\u001b[0m\u001b[1;33m:\u001b[0m \u001b[0marg\u001b[0m \u001b[1;32mfor\u001b[0m \u001b[0mk\u001b[0m\u001b[1;33m,\u001b[0m \u001b[0marg\u001b[0m \u001b[1;32min\u001b[0m \u001b[0mzip\u001b[0m\u001b[1;33m(\u001b[0m\u001b[0msig\u001b[0m\u001b[1;33m.\u001b[0m\u001b[0mparameters\u001b[0m\u001b[1;33m,\u001b[0m \u001b[0margs\u001b[0m\u001b[1;33m)\u001b[0m\u001b[1;33m}\u001b[0m\u001b[1;33m)\u001b[0m\u001b[1;33m\u001b[0m\u001b[1;33m\u001b[0m\u001b[0m\n\u001b[1;32m---> 73\u001b[1;33m         \u001b[1;32mreturn\u001b[0m \u001b[0mf\u001b[0m\u001b[1;33m(\u001b[0m\u001b[1;33m**\u001b[0m\u001b[0mkwargs\u001b[0m\u001b[1;33m)\u001b[0m\u001b[1;33m\u001b[0m\u001b[1;33m\u001b[0m\u001b[0m\n\u001b[0m\u001b[0;32m     74\u001b[0m     \u001b[1;32mreturn\u001b[0m \u001b[0minner_f\u001b[0m\u001b[1;33m\u001b[0m\u001b[1;33m\u001b[0m\u001b[0m\n\u001b[0;32m     75\u001b[0m \u001b[1;33m\u001b[0m\u001b[0m\n",
+      "\u001b[1;32m~\\AppData\\Roaming\\Python\\Python38\\site-packages\\sklearn\\utils\\validation.py\u001b[0m in \u001b[0;36mcheck_X_y\u001b[1;34m(X, y, accept_sparse, accept_large_sparse, dtype, order, copy, force_all_finite, ensure_2d, allow_nd, multi_output, ensure_min_samples, ensure_min_features, y_numeric, estimator)\u001b[0m\n\u001b[0;32m    794\u001b[0m         \u001b[1;32mraise\u001b[0m \u001b[0mValueError\u001b[0m\u001b[1;33m(\u001b[0m\u001b[1;34m\"y cannot be None\"\u001b[0m\u001b[1;33m)\u001b[0m\u001b[1;33m\u001b[0m\u001b[1;33m\u001b[0m\u001b[0m\n\u001b[0;32m    795\u001b[0m \u001b[1;33m\u001b[0m\u001b[0m\n\u001b[1;32m--> 796\u001b[1;33m     X = check_array(X, accept_sparse=accept_sparse,\n\u001b[0m\u001b[0;32m    797\u001b[0m                     \u001b[0maccept_large_sparse\u001b[0m\u001b[1;33m=\u001b[0m\u001b[0maccept_large_sparse\u001b[0m\u001b[1;33m,\u001b[0m\u001b[1;33m\u001b[0m\u001b[1;33m\u001b[0m\u001b[0m\n\u001b[0;32m    798\u001b[0m                     \u001b[0mdtype\u001b[0m\u001b[1;33m=\u001b[0m\u001b[0mdtype\u001b[0m\u001b[1;33m,\u001b[0m \u001b[0morder\u001b[0m\u001b[1;33m=\u001b[0m\u001b[0morder\u001b[0m\u001b[1;33m,\u001b[0m \u001b[0mcopy\u001b[0m\u001b[1;33m=\u001b[0m\u001b[0mcopy\u001b[0m\u001b[1;33m,\u001b[0m\u001b[1;33m\u001b[0m\u001b[1;33m\u001b[0m\u001b[0m\n",
+      "\u001b[1;32m~\\AppData\\Roaming\\Python\\Python38\\site-packages\\sklearn\\utils\\validation.py\u001b[0m in \u001b[0;36minner_f\u001b[1;34m(*args, **kwargs)\u001b[0m\n\u001b[0;32m     71\u001b[0m                           FutureWarning)\n\u001b[0;32m     72\u001b[0m         \u001b[0mkwargs\u001b[0m\u001b[1;33m.\u001b[0m\u001b[0mupdate\u001b[0m\u001b[1;33m(\u001b[0m\u001b[1;33m{\u001b[0m\u001b[0mk\u001b[0m\u001b[1;33m:\u001b[0m \u001b[0marg\u001b[0m \u001b[1;32mfor\u001b[0m \u001b[0mk\u001b[0m\u001b[1;33m,\u001b[0m \u001b[0marg\u001b[0m \u001b[1;32min\u001b[0m \u001b[0mzip\u001b[0m\u001b[1;33m(\u001b[0m\u001b[0msig\u001b[0m\u001b[1;33m.\u001b[0m\u001b[0mparameters\u001b[0m\u001b[1;33m,\u001b[0m \u001b[0margs\u001b[0m\u001b[1;33m)\u001b[0m\u001b[1;33m}\u001b[0m\u001b[1;33m)\u001b[0m\u001b[1;33m\u001b[0m\u001b[1;33m\u001b[0m\u001b[0m\n\u001b[1;32m---> 73\u001b[1;33m         \u001b[1;32mreturn\u001b[0m \u001b[0mf\u001b[0m\u001b[1;33m(\u001b[0m\u001b[1;33m**\u001b[0m\u001b[0mkwargs\u001b[0m\u001b[1;33m)\u001b[0m\u001b[1;33m\u001b[0m\u001b[1;33m\u001b[0m\u001b[0m\n\u001b[0m\u001b[0;32m     74\u001b[0m     \u001b[1;32mreturn\u001b[0m \u001b[0minner_f\u001b[0m\u001b[1;33m\u001b[0m\u001b[1;33m\u001b[0m\u001b[0m\n\u001b[0;32m     75\u001b[0m \u001b[1;33m\u001b[0m\u001b[0m\n",
+      "\u001b[1;32m~\\AppData\\Roaming\\Python\\Python38\\site-packages\\sklearn\\utils\\validation.py\u001b[0m in \u001b[0;36mcheck_array\u001b[1;34m(array, accept_sparse, accept_large_sparse, dtype, order, copy, force_all_finite, ensure_2d, allow_nd, ensure_min_samples, ensure_min_features, estimator)\u001b[0m\n\u001b[0;32m    597\u001b[0m                     \u001b[0marray\u001b[0m \u001b[1;33m=\u001b[0m \u001b[0marray\u001b[0m\u001b[1;33m.\u001b[0m\u001b[0mastype\u001b[0m\u001b[1;33m(\u001b[0m\u001b[0mdtype\u001b[0m\u001b[1;33m,\u001b[0m \u001b[0mcasting\u001b[0m\u001b[1;33m=\u001b[0m\u001b[1;34m\"unsafe\"\u001b[0m\u001b[1;33m,\u001b[0m \u001b[0mcopy\u001b[0m\u001b[1;33m=\u001b[0m\u001b[1;32mFalse\u001b[0m\u001b[1;33m)\u001b[0m\u001b[1;33m\u001b[0m\u001b[1;33m\u001b[0m\u001b[0m\n\u001b[0;32m    598\u001b[0m                 \u001b[1;32melse\u001b[0m\u001b[1;33m:\u001b[0m\u001b[1;33m\u001b[0m\u001b[1;33m\u001b[0m\u001b[0m\n\u001b[1;32m--> 599\u001b[1;33m                     \u001b[0marray\u001b[0m \u001b[1;33m=\u001b[0m \u001b[0mnp\u001b[0m\u001b[1;33m.\u001b[0m\u001b[0masarray\u001b[0m\u001b[1;33m(\u001b[0m\u001b[0marray\u001b[0m\u001b[1;33m,\u001b[0m \u001b[0morder\u001b[0m\u001b[1;33m=\u001b[0m\u001b[0morder\u001b[0m\u001b[1;33m,\u001b[0m \u001b[0mdtype\u001b[0m\u001b[1;33m=\u001b[0m\u001b[0mdtype\u001b[0m\u001b[1;33m)\u001b[0m\u001b[1;33m\u001b[0m\u001b[1;33m\u001b[0m\u001b[0m\n\u001b[0m\u001b[0;32m    600\u001b[0m             \u001b[1;32mexcept\u001b[0m \u001b[0mComplexWarning\u001b[0m\u001b[1;33m:\u001b[0m\u001b[1;33m\u001b[0m\u001b[1;33m\u001b[0m\u001b[0m\n\u001b[0;32m    601\u001b[0m                 raise ValueError(\"Complex data not supported\\n\"\n",
+      "\u001b[1;32m~\\AppData\\Roaming\\Python\\Python38\\site-packages\\numpy\\core\\_asarray.py\u001b[0m in \u001b[0;36masarray\u001b[1;34m(a, dtype, order)\u001b[0m\n\u001b[0;32m     81\u001b[0m \u001b[1;33m\u001b[0m\u001b[0m\n\u001b[0;32m     82\u001b[0m     \"\"\"\n\u001b[1;32m---> 83\u001b[1;33m     \u001b[1;32mreturn\u001b[0m \u001b[0marray\u001b[0m\u001b[1;33m(\u001b[0m\u001b[0ma\u001b[0m\u001b[1;33m,\u001b[0m \u001b[0mdtype\u001b[0m\u001b[1;33m,\u001b[0m \u001b[0mcopy\u001b[0m\u001b[1;33m=\u001b[0m\u001b[1;32mFalse\u001b[0m\u001b[1;33m,\u001b[0m \u001b[0morder\u001b[0m\u001b[1;33m=\u001b[0m\u001b[0morder\u001b[0m\u001b[1;33m)\u001b[0m\u001b[1;33m\u001b[0m\u001b[1;33m\u001b[0m\u001b[0m\n\u001b[0m\u001b[0;32m     84\u001b[0m \u001b[1;33m\u001b[0m\u001b[0m\n\u001b[0;32m     85\u001b[0m \u001b[1;33m\u001b[0m\u001b[0m\n",
+      "\u001b[1;31mValueError\u001b[0m: could not convert string to float: 'S'"
+     ]
+    }
+   ],
+   "source": [
+    "clf = LogisticRegression()\n",
+    "clf.fit(X_train, y_train)#这里肯定会报错。"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "大多数分类器都设计用于处理数值数据。 因此，我们需要将分类数据转换为数字特征。 最简单的方法是使用`OneHotEncoder`对每个分类特征进行读热编码。 让我们以`sex`与`embarked`列为例。 请注意，我们还会遇到一些缺失的数据。 我们将使用`SimpleImputer`用常量值替换缺失值。"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 37,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "array([[0., 1., 0., 0., 1., 0.],\n",
+       "       [0., 1., 1., 0., 0., 0.],\n",
+       "       [0., 1., 0., 0., 1., 0.],\n",
+       "       ...,\n",
+       "       [0., 1., 0., 0., 1., 0.],\n",
+       "       [1., 0., 0., 0., 1., 0.],\n",
+       "       [1., 0., 0., 0., 1., 0.]])"
+      ]
+     },
+     "execution_count": 37,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "from sklearn.impute import SimpleImputer\n",
+    "from sklearn.preprocessing import OneHotEncoder\n",
+    "ohe = make_pipeline(SimpleImputer(strategy='constant'), OneHotEncoder())\n",
+    "X_encoded = ohe.fit_transform(X_train[['sex', 'embarked']])\n",
+    "X_encoded.toarray()"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "这样，可以对分类特征进行编码。 但是，我们也希望标准化数字特征。 因此，我们需要将原始数据分成2个子组并应用不同的预处理：（i）分类数据的独热编；（ii）数值数据的标准缩放(归一化)。 我们还需要处理两种情况下的缺失值： 对于分类列，我们将字符串'`missing_values`'替换为缺失值，该字符串将自行解释为类别。 对于数值数据，我们将用感兴趣的特征的平均值替换缺失的数据。"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 38,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "col_cat = ['sex', 'embarked']\n",
+    "col_num = ['age', 'sibsp', 'parch', 'fare']\n",
+    "\n",
+    "X_train_cat = X_train[col_cat]\n",
+    "X_train_num = X_train[col_num]\n",
+    "X_test_cat = X_test[col_cat]\n",
+    "X_test_num = X_test[col_num]"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 39,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "from sklearn.preprocessing import StandardScaler\n",
+    "\n",
+    "scaler_cat = make_pipeline(SimpleImputer(strategy='constant'), OneHotEncoder())\n",
+    "X_train_cat_enc = scaler_cat.fit_transform(X_train_cat)\n",
+    "X_test_cat_enc = scaler_cat.transform(X_test_cat)\n",
+    "\n",
+    "scaler_num = make_pipeline(SimpleImputer(strategy='mean'), StandardScaler())\n",
+    "X_train_num_scaled = scaler_num.fit_transform(X_train_num)\n",
+    "X_test_num_scaled = scaler_num.transform(X_test_num)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 40,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "import numpy as np\n",
+    "from scipy import sparse\n",
+    "#转为稀疏矩阵\n",
+    "\n",
+    "X_train_scaled = sparse.hstack((X_train_cat_enc,\n",
+    "                                sparse.csr_matrix(X_train_num_scaled)))\n",
+    "X_test_scaled = sparse.hstack((X_test_cat_enc,\n",
+    "                               sparse.csr_matrix(X_test_num_scaled)))"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "转换完成后，我们现在可以组合所有数值的信息。最后，我们使用`LogisticRegression`分类器作为模型。"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 41,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Accuracy score of the LogisticRegression is 0.7866\n"
+     ]
+    }
+   ],
+   "source": [
+    "clf = LogisticRegression(solver='lbfgs')\n",
+    "clf.fit(X_train_scaled, y_train)\n",
+    "accuracy = clf.score(X_test_scaled, y_test)\n",
+    "print('Accuracy score of the {} is {:.4f}'.format(clf.__class__.__name__, accuracy))"
+   ]
+  }
+ ],
+ "metadata": {
+  "kernelspec": {
+   "display_name": "Python 3 (ipykernel)",
+   "language": "python",
+   "name": "python3"
+  },
+  "language_info": {
+   "codemirror_mode": {
+    "name": "ipython",
+    "version": 3
+   },
+   "file_extension": ".py",
+   "mimetype": "text/x-python",
+   "name": "python",
+   "nbconvert_exporter": "python",
+   "pygments_lexer": "ipython3",
+   "version": "3.7.11"
+  },
+  "toc": {
+   "base_numbering": 1,
+   "nav_menu": {},
+   "number_sections": true,
+   "sideBar": true,
+   "skip_h1_title": false,
+   "title_cell": "Table of Contents",
+   "title_sidebar": "Contents",
+   "toc_cell": false,
+   "toc_position": {},
+   "toc_section_display": true,
+   "toc_window_display": true
+  }
+ },
+ "nbformat": 4,
+ "nbformat_minor": 2
+}
